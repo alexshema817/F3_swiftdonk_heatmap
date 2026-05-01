@@ -35,6 +35,10 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html, body {
+    overscroll-behavior: none; /* prevent pull-to-refresh interfering with map */
+  }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -238,21 +242,42 @@
     width: 56px;
     flex-shrink: 0;
   }
-
-  input[type=range] {
-    -webkit-appearance: none;
-    flex: 1;
-    height: 2px;
-    background: var(--border);
-    outline: none;
-    border-radius: 1px;
+  .control-val {
+    font-family: var(--display);
+    font-size: 1rem;
+    color: var(--accent);
+    width: 30px;
+    text-align: center;
+    flex-shrink: 0;
   }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 11px; height: 11px;
-    border-radius: 50%;
-    background: var(--accent);
+  .stepper {
+    display: flex; align-items: center; gap: 6px; flex: 1;
+  }
+  .step-btn {
+    background: var(--border);
+    color: var(--text);
+    border: none;
+    width: 40px; height: 40px;
+    border-radius: 4px;
+    font-size: 1.4rem;
+    line-height: 1;
     cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .step-btn:hover { background: #333; }
+  .step-btn:active { background: var(--accent); transform: scale(0.93); }
+  .step-track {
+    flex: 1; height: 3px;
+    background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+  .step-fill {
+    height: 100%; background: var(--accent);
+    border-radius: 2px; transition: width 0.15s;
   }
 
   .btn {
@@ -270,6 +295,12 @@
   }
   .btn:hover { background: #ff6622; }
   .btn:active { transform: scale(0.98); }
+  .btn.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .btn.secondary:hover { border-color: var(--accent); color: var(--accent); }
 
   /* ── MAP ── */
   #map { grid-area: map; z-index: 1; position: relative; }
@@ -432,7 +463,6 @@
     /* Larger touch targets */
     .file-item { padding: 12px 16px; font-size: 0.7rem; }
     .file-dot { width: 9px; height: 9px; }
-    input[type=range]::-webkit-slider-thumb { width: 20px; height: 20px; }
     .controls { padding: 12px 16px; }
     .btn { padding: 12px; font-size: 1rem; }
   }
@@ -516,13 +546,24 @@
   <div class="controls">
     <div class="control-row">
       <span class="control-label">Opacity</span>
-      <input type="range" id="opacity-slider" min="10" max="100" value="70">
+      <div class="stepper">
+        <button class="step-btn" id="opacity-down">−</button>
+        <div class="step-track"><div class="step-fill" id="opacity-fill" style="width:70%"></div></div>
+        <button class="step-btn" id="opacity-up">+</button>
+      </div>
+      <span class="control-val" id="opacity-val">70%</span>
     </div>
     <div class="control-row">
       <span class="control-label">Weight</span>
-      <input type="range" id="weight-slider" min="1" max="8" value="3">
+      <div class="stepper">
+        <button class="step-btn" id="weight-down">−</button>
+        <div class="step-track"><div class="step-fill" id="weight-fill" style="width:29%"></div></div>
+        <button class="step-btn" id="weight-up">+</button>
+      </div>
+      <span class="control-val" id="weight-val">3</span>
     </div>
     <button class="btn" id="fit-btn">⊞ Fit All Routes</button>
+    <button class="btn secondary" id="refresh-btn">↺ Refresh Routes</button>
   </div>
 </aside>
 
@@ -813,17 +854,29 @@ async function loadAllFromGitHub() {
 }
 
 // ── Controls ───────────────────────────────────────────────────────────────
-document.getElementById('opacity-slider').addEventListener('input', e => {
-  opacityVal = e.target.value / 100;
-  state.heatLayers.forEach(l => l.setStyle({ opacity: opacityVal }));
-});
+let opacityPct = 70; // 10–100
+let weightStep = 3;  // 1–8
 
-document.getElementById('weight-slider').addEventListener('input', e => {
-  weightVal = parseInt(e.target.value);
+function updateOpacity() {
+  opacityVal = opacityPct / 100;
+  document.getElementById('opacity-val').textContent = opacityPct + '%';
+  document.getElementById('opacity-fill').style.width = opacityPct + '%';
+  state.heatLayers.forEach(l => l.setStyle({ opacity: opacityVal }));
+}
+function updateWeight() {
+  weightVal = weightStep;
+  document.getElementById('weight-val').textContent = weightStep;
+  document.getElementById('weight-fill').style.width = ((weightStep - 1) / 7 * 100) + '%';
   state.heatLayers.forEach(l => l.setStyle({ weight: weightVal }));
-});
+}
+
+document.getElementById('opacity-down').addEventListener('click', () => { opacityPct = Math.max(10, opacityPct - 10); updateOpacity(); });
+document.getElementById('opacity-up').addEventListener('click',   () => { opacityPct = Math.min(100, opacityPct + 10); updateOpacity(); });
+document.getElementById('weight-down').addEventListener('click',  () => { weightStep = Math.max(1, weightStep - 1); updateWeight(); });
+document.getElementById('weight-up').addEventListener('click',    () => { weightStep = Math.min(8, weightStep + 1); updateWeight(); });
 
 document.getElementById('fit-btn').addEventListener('click', fitAll);
+document.getElementById('refresh-btn').addEventListener('click', () => window.location.reload(true));
 
 // ── Mobile drawer ──────────────────────────────────────────────────────────
 const drawerToggle = document.getElementById('drawer-toggle');
