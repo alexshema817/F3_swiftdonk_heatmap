@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Swift Donkey</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#ff4d00">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Swift Donkey">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -493,12 +499,12 @@ const coffeeIcon = L.divIcon({
   popupAnchor: [0, -16],
 });
 
-L.marker([37.2707, -79.9414], { icon: coffeeIcon })
+L.marker([37.2488, -79.9636], { icon: coffeeIcon })
   .addTo(map)
   .bindPopup(`
     <div style="font-family:'Space Mono',monospace;font-size:0.7rem;line-height:1.6;color:#e8e8e8;background:#111;padding:4px 2px">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:0.1em;color:#ff4d00">Sweet Donkey Coffee</div>
-      <div style="color:#555">Roanoke, VA</div>
+      <div style="color:#555">2108 Broadway Ave SW, Roanoke, VA</div>
       <div style="color:#555;font-size:0.6rem;margin-top:2px">Run HQ ☕</div>
     </div>
   `, { className: 'coffee-popup' })
@@ -735,6 +741,15 @@ document.getElementById('weight-slider').addEventListener('input', e => {
 });
 
 document.getElementById('fit-btn').addEventListener('click', fitAll);
+
+// ── PWA Service Worker ─────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('SW registered'))
+      .catch(err => console.warn('SW failed:', err));
+  });
+}
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 loadAllFromGitHub();
