@@ -265,9 +265,7 @@
   /* ── MAP ── */
   #map { grid-area: map; z-index: 1; position: relative; }
 
-  .leaflet-tile-pane {
-    filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(1.1);
-  }
+  /* map stays in normal light mode */
   .leaflet-control-zoom a {
     background: var(--surface) !important;
     color: var(--text) !important;
@@ -480,7 +478,7 @@ let weightVal  = 3;
 
 // ── Map ────────────────────────────────────────────────────────────────────
 const map = L.map('map', { zoomControl: true, attributionControl: false })
-  .setView([37.2707, -79.9414], 14); // Sweet Donkey Coffee, Roanoke VA
+  .setView([37.2488, -79.9636], 14); // Sweet Donkey Coffee, 2108 Broadway Ave SW, Roanoke VA
 
 // Coffee cup marker at Sweet Donkey Coffee
 const coffeeIcon = L.divIcon({
@@ -534,8 +532,29 @@ function parseGPX(text, filename) {
     const lon = parseFloat(pt.getAttribute('lon'));
     if (!isNaN(lat) && !isNaN(lon)) coords.push([lat, lon]);
   });
-  const rawName = doc.querySelector('name')?.textContent?.trim();
-  const name = rawName || filename.replace('.gpx','').replace(/_/g,' ');
+
+  // Try to get date from <time> element inside the track
+  let name = '';
+  const timeEl = doc.querySelector('trkpt time, trk time, metadata time, time');
+  if (timeEl) {
+    const d = new Date(timeEl.textContent.trim());
+    if (!isNaN(d)) {
+      name = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  }
+  // Fallback: try to parse date from filename (e.g. 2024-03-15.gpx)
+  if (!name) {
+    const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
+    if (match) {
+      const d = new Date(match[1]);
+      if (!isNaN(d)) {
+        name = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    }
+  }
+  // Final fallback: just use filename
+  if (!name) name = filename.replace('.gpx','').replace(/_/g,' ');
+
   return { name, coords };
 }
 
