@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Swift Donkey</title>
+<link rel="icon" type="image/png" href="/images/f3_favicon.png">
+<link rel="apple-touch-icon" href="/images/f3_favicon.png">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#ff4d00">
 <meta name="mobile-web-app-capable" content="yes">
@@ -38,6 +40,7 @@
     color: var(--text);
     font-family: var(--mono);
     height: 100vh;
+    height: 100dvh;
     display: grid;
     grid-template-rows: auto 1fr auto;
     grid-template-columns: 300px 1fr;
@@ -352,6 +355,87 @@
   .coffee-popup .leaflet-popup-content {
     margin: 8px 12px;
   }
+
+  /* ── MOBILE DRAWER TOGGLE ── */
+  #drawer-toggle {
+    display: none;
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 22px;
+    font-family: var(--display);
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+    box-shadow: 0 4px 20px rgba(255,77,0,0.45);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* ── MOBILE (≤ 640px) ── */
+  @media (max-width: 640px) {
+
+    body {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr auto;
+      grid-template-areas:
+        "header"
+        "map"
+        "footer";
+    }
+
+    header { padding: 8px 14px; }
+    .logo svg { width: 28px; height: 28px; }
+    .logo { font-size: 1.2rem; gap: 8px; }
+    .logo-sub { display: none; }
+    .header-stats { gap: 14px; }
+    .stat-val { font-size: 1.1rem; }
+    .stat-label { font-size: 0.45rem; }
+
+    footer { padding: 4px 14px; font-size: 0.5rem; }
+    footer span:last-child { display: none; }
+
+    /* Sidebar = slide-up bottom drawer */
+    aside {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 65vh;
+      max-height: 65vh;
+      border-right: none;
+      border-top: 2px solid var(--accent);
+      border-radius: 16px 16px 0 0;
+      z-index: 400;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+    }
+    aside.open { transform: translateY(0); }
+
+    /* Drag handle */
+    aside::before {
+      content: '';
+      display: block;
+      width: 36px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 10px auto 4px;
+      flex-shrink: 0;
+    }
+
+    #drawer-toggle { display: block; }
+    #map { grid-area: map; }
+
+    /* Larger touch targets */
+    .file-item { padding: 12px 16px; font-size: 0.7rem; }
+    .file-dot { width: 9px; height: 9px; }
+    input[type=range]::-webkit-slider-thumb { width: 20px; height: 20px; }
+    .controls { padding: 12px 16px; }
+    .btn { padding: 12px; font-size: 1rem; }
+  }
 </style>
 </head>
 <body>
@@ -399,15 +483,11 @@
     </div>
     <div class="stat">
       <div class="stat-val" id="stat-dist">—</div>
-      <div class="stat-label">km Total</div>
+      <div class="stat-label">Miles Total</div>
     </div>
     <div class="stat">
       <div class="stat-val" id="stat-segments">—</div>
       <div class="stat-label">Segments</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val" id="stat-max">—</div>
-      <div class="stat-label">Max Repeats</div>
     </div>
   </div>
 </header>
@@ -455,6 +535,9 @@
   </div>
 </div>
 
+<!-- MOBILE DRAWER TOGGLE -->
+<button id="drawer-toggle">☰ RUNS</button>
+
 <!-- FOOTER -->
 <footer>
   <div class="status">
@@ -484,7 +567,7 @@ let weightVal  = 3;
 
 // ── Map ────────────────────────────────────────────────────────────────────
 const map = L.map('map', { zoomControl: true, attributionControl: false })
-  .setView([37.2533, -79.9936], 15); // Sweet Donkey Coffee, 7322+6J Roanoke VA
+  .setView([37.2506205, -79.9484836], 15); // Sweet Donkey Coffee, exact coords
 
 // Coffee cup marker at Sweet Donkey Coffee
 const coffeeIcon = L.divIcon({
@@ -499,7 +582,7 @@ const coffeeIcon = L.divIcon({
   popupAnchor: [0, -16],
 });
 
-L.marker([37.2533, -79.9936], { icon: coffeeIcon })
+L.marker([37.2506205, -79.9484836], { icon: coffeeIcon })
   .addTo(map)
   .bindPopup(`
     <div style="font-family:'Space Mono',monospace;font-size:0.7rem;line-height:1.6;color:#e8e8e8;background:#111;padding:4px 2px">
@@ -623,9 +706,9 @@ function renderAll() {
 
 function updateStats(max) {
   document.getElementById('stat-runs').textContent     = state.activities.length;
-  document.getElementById('stat-dist').textContent     = state.activities.reduce((s,a)=>s+a.dist,0).toFixed(1);
+  const totalKm = state.activities.reduce((s,a)=>s+a.dist,0);
+  document.getElementById('stat-dist').textContent     = (totalKm * 0.621371).toFixed(1);
   document.getElementById('stat-segments').textContent = state.segmentMap.size;
-  document.getElementById('stat-max').textContent      = max;
 }
 
 // ── File list UI ───────────────────────────────────────────────────────────
@@ -741,6 +824,21 @@ document.getElementById('weight-slider').addEventListener('input', e => {
 });
 
 document.getElementById('fit-btn').addEventListener('click', fitAll);
+
+// ── Mobile drawer ──────────────────────────────────────────────────────────
+const drawerToggle = document.getElementById('drawer-toggle');
+const sidebar = document.querySelector('aside');
+
+drawerToggle.addEventListener('click', () => {
+  const isOpen = sidebar.classList.toggle('open');
+  drawerToggle.textContent = isOpen ? '✕ CLOSE' : '☰ RUNS';
+});
+
+// Tap map to close drawer
+document.getElementById('map').addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  drawerToggle.textContent = '☰ RUNS';
+});
 
 // ── PWA Service Worker ─────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
