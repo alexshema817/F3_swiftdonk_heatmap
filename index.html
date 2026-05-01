@@ -484,7 +484,7 @@ let weightVal  = 3;
 
 // ── Map ────────────────────────────────────────────────────────────────────
 const map = L.map('map', { zoomControl: true, attributionControl: false })
-  .setView([37.2488, -79.9636], 14); // Sweet Donkey Coffee, 2108 Broadway Ave SW, Roanoke VA
+  .setView([37.2533, -79.9936], 15); // Sweet Donkey Coffee, 7322+6J Roanoke VA
 
 // Coffee cup marker at Sweet Donkey Coffee
 const coffeeIcon = L.divIcon({
@@ -499,7 +499,7 @@ const coffeeIcon = L.divIcon({
   popupAnchor: [0, -16],
 });
 
-L.marker([37.2488, -79.9636], { icon: coffeeIcon })
+L.marker([37.2533, -79.9936], { icon: coffeeIcon })
   .addTo(map)
   .bindPopup(`
     <div style="font-family:'Space Mono',monospace;font-size:0.7rem;line-height:1.6;color:#e8e8e8;background:#111;padding:4px 2px">
