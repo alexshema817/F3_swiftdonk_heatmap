@@ -795,8 +795,11 @@ async function fetchAndParse(file, index, total) {
   setStatus(`Loading ${index + 1} / ${total} — ${file.name}`);
   setProgress(((index + 1) / total) * 100);
 
-  const res = await fetch(`${RAW_BASE}/${file.name}`);
-  if (!res.ok) throw new Error(`Failed to fetch ${file.name}`);
+  // Use download_url directly from GitHub API — already correctly encoded
+  const url = file.download_url;
+  if (!url) throw new Error(`No download_url for ${file.name}`);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch ${file.name}: ${res.status}`);
   const text = await res.text();
   return parseGPX(text, file.name);
 }
