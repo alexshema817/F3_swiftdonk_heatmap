@@ -334,6 +334,20 @@
     padding: 5px 8px;
     border-radius: 2px;
   }
+
+  /* ── COFFEE POPUP ── */
+  .coffee-popup .leaflet-popup-content-wrapper {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 3px;
+    box-shadow: 0 0 16px rgba(255,77,0,0.25);
+  }
+  .coffee-popup .leaflet-popup-tip {
+    background: #111;
+  }
+  .coffee-popup .leaflet-popup-content {
+    margin: 8px 12px;
+  }
 </style>
 </head>
 <body>
@@ -466,7 +480,31 @@ let weightVal  = 3;
 
 // ── Map ────────────────────────────────────────────────────────────────────
 const map = L.map('map', { zoomControl: true, attributionControl: false })
-  .setView([35.5, -80.8], 12);   // rough Charlotte/Concord NC default — adjusts on load
+  .setView([37.2707, -79.9414], 14); // Sweet Donkey Coffee, Roanoke VA
+
+// Coffee cup marker at Sweet Donkey Coffee
+const coffeeIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    font-size: 1.6rem;
+    filter: drop-shadow(0 0 6px rgba(255,77,0,0.8));
+    cursor: default;
+    line-height: 1;
+  ">☕</div>`,
+  iconAnchor: [14, 14],
+  popupAnchor: [0, -16],
+});
+
+L.marker([37.2707, -79.9414], { icon: coffeeIcon })
+  .addTo(map)
+  .bindPopup(`
+    <div style="font-family:'Space Mono',monospace;font-size:0.7rem;line-height:1.6;color:#e8e8e8;background:#111;padding:4px 2px">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:0.1em;color:#ff4d00">Sweet Donkey Coffee</div>
+      <div style="color:#555">Roanoke, VA</div>
+      <div style="color:#555;font-size:0.6rem;margin-top:2px">Run HQ ☕</div>
+    </div>
+  `, { className: 'coffee-popup' })
+  .openPopup();
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
