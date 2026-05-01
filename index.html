@@ -585,16 +585,15 @@
     <div class="status-dot loading" id="status-dot"></div>
     <span id="status-text">Connecting to GitHub...</span>
   </div>
-  <span>alexshema817 / F3_swiftdonk_heatmap / Map Files</span>
+  <span>alexshema817 / F3_swiftdonk_heatmap / map_files</span>
 </footer>
 
 <script>
 // ── Config ─────────────────────────────────────────────────────────────────
 const GITHUB_USER   = 'alexshema817';
 const GITHUB_REPO   = 'F3_swiftdonk_heatmap';
-const GITHUB_FOLDER = 'Map Files';
-const RAW_BASE      = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${encodeURIComponent(GITHUB_FOLDER)}`;
-const API_BASE      = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${encodeURIComponent(GITHUB_FOLDER)}`;
+const RAW_BASE      = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/map_files`;
+const API_BASE      = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/map_files`;
 
 // ── State ──────────────────────────────────────────────────────────────────
 const state = {
@@ -760,7 +759,7 @@ function renderFileList() {
     <div class="file-item">
       <div class="file-dot" style="background:${a.color}"></div>
       <div class="file-name" title="${a.name}">${a.name}</div>
-      <div class="file-dist">${a.dist.toFixed(1)}km</div>
+      <div class="file-dist">${(a.dist * 0.621371).toFixed(1)}mi</div>
     </div>
   `).join('');
 }
@@ -848,8 +847,14 @@ async function loadAllFromGitHub() {
 
   } catch (err) {
     setStatus(`Error: ${err.message}`, true);
-    document.getElementById('empty-state').querySelector('.empty-text').textContent = 'Load Error';
-    document.getElementById('empty-state').querySelector('.empty-sub').textContent  = err.message;
+    const es = document.getElementById('empty-state');
+    es.style.display = 'block';
+    es.querySelector('.empty-icon').textContent = '⚠️';
+    es.querySelector('.empty-text').textContent = 'Load Error';
+    es.querySelector('.empty-sub').textContent  = err.message;
+    es.style.opacity = '1';
+    es.querySelector('.empty-text').style.opacity = '1';
+    es.querySelector('.empty-sub').style.opacity = '1';
   }
 }
 
