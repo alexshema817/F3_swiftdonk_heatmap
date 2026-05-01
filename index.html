@@ -840,12 +840,10 @@ document.getElementById('map').addEventListener('click', () => {
   drawerToggle.textContent = '☰ RUNS';
 });
 
-// ── PWA Service Worker ─────────────────────────────────────────────────────
+// ── PWA Service Worker — unregister any cached SW to prevent stale content ──
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('SW registered'))
-      .catch(err => console.warn('SW failed:', err));
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
   });
 }
 
