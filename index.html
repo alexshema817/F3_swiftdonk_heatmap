@@ -151,8 +151,11 @@
   .file-list {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0; /* critical for flex scroll */
   }
 
   .file-item {
@@ -162,11 +165,33 @@
     border-bottom: 1px solid var(--border);
     gap: 8px;
     font-size: 0.65rem;
-    animation: fadeIn 0.25s ease;
-    cursor: default;
+    cursor: pointer;
+    transition: background 0.1s;
   }
+  .file-item:hover { background: rgba(255,255,255,0.04); }
+  .file-item:active { background: rgba(255,77,0,0.08); }
 
-  .file-item:hover { background: rgba(255,255,255,0.02); }
+  .select-all-row { background: rgba(255,77,0,0.05); }
+
+  .file-check {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--muted);
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+  }
+  .file-check.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .file-check.checked::after {
+    content: '✓';
+    font-size: 0.6rem;
+    color: #fff;
+    line-height: 1;
+  }
 
   @keyframes fadeIn {
     from { opacity: 0; transform: translateX(-6px); }
@@ -473,33 +498,7 @@
 <!-- HEADER -->
 <header>
   <div class="logo">
-    <!-- Mean donkey SVG -->
-    <svg width="42" height="42" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-      <ellipse cx="22" cy="26" rx="13" ry="9" fill="#3a3a3a" stroke="#ff4d00" stroke-width="1"/>
-      <path d="M18 20 C16 15 14 12 15 9" stroke="#3a3a3a" stroke-width="6" stroke-linecap="round" fill="none"/>
-      <ellipse cx="13" cy="8" rx="5" ry="4" fill="#3a3a3a" stroke="#ff4d00" stroke-width="1"/>
-      <ellipse cx="9" cy="9.5" rx="3.5" ry="2.5" fill="#2a2a2a" stroke="#ff4d00" stroke-width="0.8"/>
-      <circle cx="7.5" cy="10" r="0.7" fill="#ff4d00"/>
-      <circle cx="9.5" cy="10.2" r="0.7" fill="#ff4d00"/>
-      <ellipse cx="14.5" cy="6.5" rx="1.6" ry="1" fill="#ff4d00"/>
-      <line x1="12.5" y1="5.5" x2="16" y2="6" stroke="#ff6600" stroke-width="0.8"/>
-      <polygon points="11,5 10,0 13,1 13,5" fill="#3a3a3a" stroke="#ff4d00" stroke-width="0.8"/>
-      <polygon points="14,4.5 14,0.5 17,2 16,5" fill="#3a3a3a" stroke="#ff4d00" stroke-width="0.8"/>
-      <polyline points="15,9 16,6 17,9 18,6 19,9 20,7 21,10" stroke="#ff4d00" stroke-width="1.2" fill="none" stroke-linejoin="round"/>
-      <line x1="14" y1="33" x2="13" y2="42" stroke="#3a3a3a" stroke-width="3" stroke-linecap="round"/>
-      <line x1="18" y1="34" x2="17" y2="43" stroke="#3a3a3a" stroke-width="3" stroke-linecap="round"/>
-      <line x1="26" y1="34" x2="27" y2="43" stroke="#3a3a3a" stroke-width="3" stroke-linecap="round"/>
-      <line x1="30" y1="33" x2="31" y2="42" stroke="#3a3a3a" stroke-width="3" stroke-linecap="round"/>
-      <rect x="12" y="41" width="3" height="2" rx="1" fill="#ff4d00"/>
-      <rect x="16" y="42" width="3" height="2" rx="1" fill="#ff4d00"/>
-      <rect x="26" y="42" width="3" height="2" rx="1" fill="#ff4d00"/>
-      <rect x="30" y="41" width="3" height="2" rx="1" fill="#ff4d00"/>
-      <path d="M35 24 C40 20 42 24 38 28" stroke="#3a3a3a" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-      <path d="M38 28 C37 31 35 33 36 35" stroke="#ff4d00" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-      <line x1="38" y1="18" x2="44" y2="17" stroke="#ff4d00" stroke-width="0.8" opacity="0.7"/>
-      <line x1="39" y1="22" x2="44" y2="22" stroke="#ff4d00" stroke-width="0.8" opacity="0.5"/>
-      <line x1="38" y1="26" x2="43" y2="27" stroke="#ff4d00" stroke-width="0.8" opacity="0.3"/>
-    </svg>
+    <img src="/images/f3_favicon.png" alt="F3 Swift Donkey" style="width:38px;height:38px;object-fit:contain;flex-shrink:0;">
     <div class="logo-text">
       <div>SWIFT DONKEY</div>
       <div class="logo-sub">RUN HEATMAP</div>
@@ -612,23 +611,49 @@ const map = L.map('map', { zoomControl: true, attributionControl: false })
 // Coffee cup marker at Sweet Donkey Coffee
 const coffeeIcon = L.divIcon({
   className: '',
-  html: `<div style="
-    font-size: 1.6rem;
-    filter: drop-shadow(0 0 6px rgba(255,77,0,0.8));
-    cursor: default;
-    line-height: 1;
-  ">☕</div>`,
-  iconAnchor: [14, 14],
-  popupAnchor: [0, -16],
+  html: `
+    <div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">
+      <div style="
+        position:absolute;inset:0;
+        border-radius:50%;
+        background:rgba(255,30,0,0.35);
+        animation:coffeeRing 1.5s ease-out infinite;
+      "></div>
+      <div style="
+        position:absolute;inset:4px;
+        border-radius:50%;
+        background:rgba(255,30,0,0.5);
+        animation:coffeeRing 1.5s ease-out infinite 0.4s;
+      "></div>
+      <div style="
+        position:relative;
+        width:32px;height:32px;
+        border-radius:50%;
+        background:#cc0000;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 10px rgba(255,0,0,0.7);
+        font-size:1.2rem;
+        z-index:1;
+      ">☕</div>
+    </div>
+    <style>
+      @keyframes coffeeRing {
+        0%   { transform:scale(0.8); opacity:0.8; }
+        100% { transform:scale(1.6); opacity:0; }
+      }
+    </style>
+  `,
+  iconAnchor: [22, 22],
+  popupAnchor: [0, -24],
 });
 
 L.marker([37.2506205, -79.9484836], { icon: coffeeIcon })
   .addTo(map)
   .bindPopup(`
-    <div style="font-family:'Space Mono',monospace;font-size:0.7rem;line-height:1.6;color:#e8e8e8;background:#111;padding:4px 2px">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:0.1em;color:#ff4d00">Sweet Donkey Coffee</div>
-      <div style="color:#555">2108 Broadway Ave SW, Roanoke, VA</div>
-      <div style="color:#555;font-size:0.6rem;margin-top:2px">Run HQ ☕</div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.7rem;line-height:1.6;color:#e8e8e8;background:#111;padding:4px 2px;text-align:center;">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:0.1em;color:#ff4d00">Let's Get that Black Gold! ☕</div>
+      <div style="color:#555;font-size:0.6rem;margin-top:2px">2108 Broadway Ave SW, Roanoke, VA</div>
+      <a href="https://maps.google.com/?q=37.2506205,-79.9484836" target="_blank" style="display:inline-block;margin-top:6px;color:#ff4d00;font-size:0.6rem;letter-spacing:0.1em;text-decoration:none;">▶ NAVIGATE</a>
     </div>
   `, { className: 'coffee-popup' })
   .openPopup();
@@ -716,57 +741,117 @@ function registerSegments(coords) {
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
+// Use a single canvas-based polyline per activity instead of one layer per segment
+// Segment frequency shown via color only — tooltips on canvas are lightweight
+
+const canvasRenderer = L.canvas({ padding: 0.5 });
+
 function renderAll() {
   state.heatLayers.forEach(l => map.removeLayer(l));
   state.heatLayers = [];
 
-  if (!state.activities.length) return;
+  const active = state.activities.filter(a => a.visible);
+  if (!active.length) { updateStats(); return; }
 
-  const max = Math.max(...state.segmentMap.values(), 1);
-
-  state.activities.forEach(act => {
+  // Rebuild segment map from visible activities only
+  const visibleSegMap = new Map();
+  active.forEach(act => {
     for (let i = 1; i < act.coords.length; i++) {
       const k = segKey(act.coords[i-1], act.coords[i]);
-      const count = state.segmentMap.get(k) || 1;
-      const pl = L.polyline([act.coords[i-1], act.coords[i]], {
-        color: freqColor(count, max),
-        weight: weightVal,
-        opacity: opacityVal,
-      }).addTo(map);
-      pl.bindTooltip(
-        `<div class="map-tooltip"><b>${count}×</b> on this segment</div>`,
-        { sticky: true }
-      );
-      state.heatLayers.push(pl);
+      visibleSegMap.set(k, (visibleSegMap.get(k) || 0) + 1);
     }
   });
 
-  updateStats(max);
+  const max = Math.max(...visibleSegMap.values(), 1);
+
+  // Group segments by frequency bucket for fewer layers (10 buckets)
+  const BUCKETS = 10;
+  const buckets = Array.from({length: BUCKETS}, () => []);
+
+  active.forEach(act => {
+    for (let i = 1; i < act.coords.length; i++) {
+      const k = segKey(act.coords[i-1], act.coords[i]);
+      const count = visibleSegMap.get(k) || 1;
+      const bucket = Math.min(Math.floor((count - 1) / max * BUCKETS), BUCKETS - 1);
+      buckets[bucket].push([act.coords[i-1], act.coords[i]]);
+    }
+  });
+
+  buckets.forEach((segs, bi) => {
+    if (!segs.length) return;
+    const t = bi / (BUCKETS - 1);
+    const r = Math.round(t * 255);
+    const g = Math.round(102 - t * 102);
+    const b = Math.round(255 - t * 255);
+    const pl = L.polyline(segs, {
+      color: `rgb(${r},${g},${b})`,
+      weight: weightVal,
+      opacity: opacityVal,
+      renderer: canvasRenderer,
+      interactive: false, // no per-segment tooltips — big perf win
+    }).addTo(map);
+    state.heatLayers.push(pl);
+  });
+
+  updateStats();
 }
 
-function updateStats(max) {
-  document.getElementById('stat-runs').textContent     = state.activities.length;
-  const totalKm = state.activities.reduce((s,a)=>s+a.dist,0);
+function updateStats() {
+  const active = state.activities.filter(a => a.visible);
+  document.getElementById('stat-runs').textContent     = active.length + '/' + state.activities.length;
+  const totalKm = active.reduce((s,a)=>s+a.dist,0);
   document.getElementById('stat-dist').textContent     = (totalKm * 0.621371).toFixed(1);
-  document.getElementById('stat-segments').textContent = state.segmentMap.size;
+  // count unique segments from visible
+  const seg = new Set();
+  active.forEach(a => {
+    for (let i = 1; i < a.coords.length; i++) seg.add(segKey(a.coords[i-1], a.coords[i]));
+  });
+  document.getElementById('stat-segments').textContent = seg.size;
 }
 
 // ── File list UI ───────────────────────────────────────────────────────────
 function renderFileList() {
   const el = document.getElementById('file-list');
   document.getElementById('file-count').textContent = state.activities.length;
-  el.innerHTML = state.activities.map(a => `
-    <div class="file-item">
-      <div class="file-dot" style="background:${a.color}"></div>
-      <div class="file-name" title="${a.name}">${a.name}</div>
-      <div class="file-dist">${(a.dist * 0.621371).toFixed(1)}mi</div>
+
+  el.innerHTML = `
+    <div class="file-item select-all-row" id="select-all-row">
+      <div class="file-check ${state.activities.every(a=>a.visible) ? 'checked' : ''}" id="select-all-check"></div>
+      <div class="file-name" style="color:var(--accent);font-size:0.6rem;letter-spacing:0.1em">ALL ROUTES</div>
     </div>
-  `).join('');
+    ${state.activities.map((a,i) => `
+      <div class="file-item" data-idx="${i}">
+        <div class="file-check ${a.visible ? 'checked' : ''}" data-idx="${i}"></div>
+        <div class="file-dot" style="background:${a.color}"></div>
+        <div class="file-name" title="${a.name}">${a.name}</div>
+        <div class="file-dist">${(a.dist * 0.621371).toFixed(1)}mi</div>
+      </div>
+    `).join('')}
+  `;
+
+  // Select all toggle
+  el.querySelector('#select-all-check').addEventListener('click', () => {
+    const allOn = state.activities.every(a => a.visible);
+    state.activities.forEach(a => a.visible = !allOn);
+    renderFileList();
+    renderAll();
+  });
+
+  // Individual toggles
+  el.querySelectorAll('.file-check[data-idx]').forEach(ch => {
+    ch.addEventListener('click', () => {
+      const i = parseInt(ch.dataset.idx);
+      state.activities[i].visible = !state.activities[i].visible;
+      renderFileList();
+      renderAll();
+    });
+  });
 }
 
 function fitAll() {
-  if (!state.activities.length) return;
-  const all = state.activities.flatMap(a => a.coords);
+  const active = state.activities.filter(a => a.visible);
+  if (!active.length) return;
+  const all = active.flatMap(a => a.coords);
   if (all.length) map.fitBounds(L.latLngBounds(all), { padding: [40,40] });
 }
 
@@ -818,7 +903,7 @@ async function loadAllFromGitHub() {
     setStatus(`Found ${files.length} GPX file${files.length > 1 ? 's' : ''} — loading...`);
 
     // Fetch all in parallel batches of 5 to avoid hammering
-    const BATCH = 5;
+    const BATCH = 10;
     let loaded = 0;
     for (let i = 0; i < files.length; i += BATCH) {
       const batch = files.slice(i, i + BATCH);
@@ -830,19 +915,21 @@ async function loadAllFromGitHub() {
           const { name, coords } = r.value;
           const color = getColor(state.activities.length);
           const dist  = totalDist(coords);
-          state.activities.push({ id: `${i+bi}`, name, color, coords, dist });
+          state.activities.push({ id: `${i+bi}`, name, color, coords, dist, visible: true });
           registerSegments(coords);
           loaded++;
         }
       });
-      // Progressive render after each batch
-      renderAll();
+      // Update sidebar list progressively, defer expensive map render to end
       renderFileList();
+      setStatus(`Loaded ${loaded} / ${files.length}...`);
     }
 
     setProgress(100);
     document.getElementById('empty-state').style.display = 'none';
 
+    // Single render after all files are loaded
+    renderAll();
     fitAll();
     setStatus(`${loaded} activit${loaded !== 1 ? 'ies' : 'y'} loaded — ${state.segmentMap.size} road segments`, true);
 
