@@ -35,6 +35,67 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ── LOADING SCREEN ── */
+  #loading-screen {
+    position: fixed;
+    inset: 0;
+    background: #0a0a0a;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+  }
+  #loading-screen.fade-out {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  #loading-screen img {
+    width: 180px; height: 180px;
+    object-fit: contain;
+    animation: donkeyBounce 0.45s ease-in-out infinite alternate;
+  }
+  @keyframes donkeyBounce {
+    from { transform: translateY(0) scaleX(1); }
+    to   { transform: translateY(-14px) scaleX(1.05); }
+  }
+  .loading-title {
+    font-family: var(--display);
+    font-size: 2.8rem;
+    letter-spacing: 0.12em;
+    color: var(--text);
+    animation: titlePulse 0.9s ease-in-out infinite alternate;
+  }
+  @keyframes titlePulse {
+    from { color: var(--text); }
+    to   { color: var(--accent); }
+  }
+  .loading-sub {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .loading-dots {
+    display: flex; gap: 8px;
+  }
+  .loading-dots span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: dotBounce 0.5s ease-in-out infinite alternate;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes dotBounce {
+    from { transform: translateY(0); opacity: 0.3; }
+    to   { transform: translateY(-8px); opacity: 1; }
+  }
+
   html, body {
     overscroll-behavior: none; /* prevent pull-to-refresh interfering with map */
   }
@@ -495,6 +556,16 @@
 </head>
 <body>
 
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <img src="/images/swiftdonk.png" alt="Swift Donkey">
+  <div class="loading-title">SWIFT DONKEY</div>
+  <div class="loading-sub">Loading your routes...</div>
+  <div class="loading-dots">
+    <span></span><span></span><span></span>
+  </div>
+</div>
+
 <!-- HEADER -->
 <header>
   <div class="logo">
@@ -935,6 +1006,10 @@ async function loadAllFromGitHub() {
 
     setTimeout(() => setProgress(0), 800);
 
+    // Signal loading screen
+    routesReady = true;
+    dismissLoadingScreen();
+
   } catch (err) {
     setStatus(`Error: ${err.message}`, true);
     const es = document.getElementById('empty-state');
@@ -945,6 +1020,9 @@ async function loadAllFromGitHub() {
     es.style.opacity = '1';
     es.querySelector('.empty-text').style.opacity = '1';
     es.querySelector('.empty-sub').style.opacity = '1';
+    // Dismiss on error too
+    routesReady = true;
+    dismissLoadingScreen();
   }
 }
 
@@ -987,6 +1065,22 @@ document.getElementById('map').addEventListener('click', () => {
   sidebar.classList.remove('open');
   drawerToggle.textContent = '☰ RUNS';
 });
+
+// ── Loading screen ─────────────────────────────────────────────────────────
+let routesReady = false;
+let timerDone = false;
+
+function dismissLoadingScreen() {
+  if (routesReady && timerDone) {
+    document.getElementById('loading-screen').classList.add('fade-out');
+  }
+}
+
+// Minimum 3 second display
+setTimeout(() => {
+  timerDone = true;
+  dismissLoadingScreen();
+}, 3000);
 
 // ── PWA Service Worker — unregister any cached SW to prevent stale content ──
 if ('serviceWorker' in navigator) {
