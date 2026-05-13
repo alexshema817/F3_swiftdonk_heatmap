@@ -760,11 +760,13 @@ function parseGPX(text, filename) {
 
   // Try to get date from <time> element inside the track
   let name = '';
+  let dateTs = 0; // unix timestamp for sorting
   const timeEl = doc.querySelector('trkpt time, trk time, metadata time, time');
   if (timeEl) {
     const d = new Date(timeEl.textContent.trim());
     if (!isNaN(d)) {
       name = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      dateTs = d.getTime();
     }
   }
   // Fallback: try to parse date from filename (e.g. 2024-03-15.gpx)
@@ -774,13 +776,14 @@ function parseGPX(text, filename) {
       const d = new Date(match[1]);
       if (!isNaN(d)) {
         name = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        dateTs = d.getTime();
       }
     }
   }
   // Final fallback: just use filename
   if (!name) name = filename.replace('.gpx','').replace(/_/g,' ');
 
-  return { name, coords };
+  return { name, coords, dateTs };
 }
 
 // ── Distance ───────────────────────────────────────────────────────────────
@@ -885,14 +888,17 @@ function renderFileList() {
   const el = document.getElementById('file-list');
   document.getElementById('file-count').textContent = state.activities.length;
 
+  // Sort newest first
+  const sorted = [...state.activities].sort((a, b) => b.dateTs - a.dateTs);
+
   el.innerHTML = `
     <div class="file-item select-all-row" id="select-all-row">
       <div class="file-check ${state.activities.every(a=>a.visible) ? 'checked' : ''}" id="select-all-check"></div>
       <div class="file-name" style="color:var(--accent);font-size:0.6rem;letter-spacing:0.1em">ALL ROUTES</div>
     </div>
-    ${state.activities.map((a,i) => `
-      <div class="file-item" data-idx="${i}">
-        <div class="file-check ${a.visible ? 'checked' : ''}" data-idx="${i}"></div>
+    ${sorted.map((a) => `
+      <div class="file-item" data-id="${a.id}">
+        <div class="file-check ${a.visible ? 'checked' : ''}" data-id="${a.id}"></div>
         <div class="file-dot" style="background:${a.color}"></div>
         <div class="file-name" title="${a.name}">${a.name}</div>
         <div class="file-dist">${(a.dist * 0.621371).toFixed(1)}mi</div>
@@ -908,11 +914,11 @@ function renderFileList() {
     renderAll();
   });
 
-  // Individual toggles
-  el.querySelectorAll('.file-check[data-idx]').forEach(ch => {
+  // Individual toggles — match by id not index since list is sorted
+  el.querySelectorAll('.file-check[data-id]').forEach(ch => {
     ch.addEventListener('click', () => {
-      const i = parseInt(ch.dataset.idx);
-      state.activities[i].visible = !state.activities[i].visible;
+      const act = state.activities.find(a => a.id === ch.dataset.id);
+      if (act) act.visible = !act.visible;
       renderFileList();
       renderAll();
     });
@@ -983,10 +989,10 @@ async function loadAllFromGitHub() {
       );
       results.forEach((r, bi) => {
         if (r.status === 'fulfilled' && r.value.coords.length >= 2) {
-          const { name, coords } = r.value;
+          const { name, coords, dateTs } = r.value;
           const color = getColor(state.activities.length);
           const dist  = totalDist(coords);
-          state.activities.push({ id: `${i+bi}`, name, color, coords, dist, visible: true });
+          state.activities.push({ id: `${i+bi}`, name, color, coords, dist, visible: true, dateTs });
           registerSegments(coords);
           loaded++;
         }
