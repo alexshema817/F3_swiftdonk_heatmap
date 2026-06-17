@@ -1,4 +1,4 @@
-# Regenerate the GPX manifest, then publish the repo root as the static site.
+# Preprocess GPX -> routes.json (and regenerate manifest), then publish root.
 [build]
-  command = "node generate-manifest.js"
+  command = "node build-routes.js && node generate-manifest.js"
   publish = "."
