@@ -642,7 +642,7 @@
   <div class="empty-state" id="empty-state">
     <div class="empty-icon">🗺️</div>
     <div class="empty-text">Loading Routes...</div>
-    <div class="empty-sub">Fetching GPX files from GitHub</div>
+    <div class="empty-sub">Loading GPX route files</div>
   </div>
 </div>
 
@@ -653,17 +653,19 @@
 <footer>
   <div class="status">
     <div class="status-dot loading" id="status-dot"></div>
-    <span id="status-text">Connecting to GitHub...</span>
+    <span id="status-text">Loading routes...</span>
   </div>
   <span>alexshema817 / F3_swiftdonk_heatmap / map_files</span>
 </footer>
 
 <script>
 // ── Config ─────────────────────────────────────────────────────────────────
-const GITHUB_USER   = 'alexshema817';
-const GITHUB_REPO   = 'F3_swiftdonk_heatmap';
-const RAW_BASE      = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/map_files`;
-const API_BASE      = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/map_files`;
+// GPX files are served from the SAME origin as this page (deployed alongside
+// it in map_files/). We no longer hit the GitHub API at runtime — its 60/hr
+// unauthenticated, per-IP rate limit caused mobile (cellular / iCloud Private
+// Relay shared IPs) to get 403s and load no routes. manifest.json lists the files.
+const FILES_BASE = 'map_files';
+const MANIFEST   = `${FILES_BASE}/manifest.json`;
 
 // ── State ──────────────────────────────────────────────────────────────────
 const state = {
@@ -946,20 +948,21 @@ function setProgress(pct) {
 
 // ── GitHub fetch ───────────────────────────────────────────────────────────
 async function fetchGPXList() {
-  setStatus('Fetching file list from GitHub...');
-  const res = await fetch(API_BASE);
-  if (!res.ok) throw new Error(`GitHub API ${res.status}: ${res.statusText}`);
-  const files = await res.json();
-  return files.filter(f => f.name.toLowerCase().endsWith('.gpx'));
+  setStatus('Loading file list...');
+  const res = await fetch(MANIFEST, { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`manifest.json ${res.status}: ${res.statusText}`);
+  const names = await res.json();
+  return names
+    .filter(n => typeof n === 'string' && n.toLowerCase().endsWith('.gpx'))
+    .map(name => ({ name }));
 }
 
 async function fetchAndParse(file, index, total) {
   setStatus(`Loading ${index + 1} / ${total} — ${file.name}`);
   setProgress(((index + 1) / total) * 100);
 
-  // Use download_url directly from GitHub API — already correctly encoded
-  const url = file.download_url;
-  if (!url) throw new Error(`No download_url for ${file.name}`);
+  // Same-origin path — no GitHub API/raw dependency, no rate limit
+  const url = `${FILES_BASE}/${encodeURIComponent(file.name)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${file.name}: ${res.status}`);
   const text = await res.text();
