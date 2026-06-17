@@ -1,0 +1,4 @@
+# Regenerate the GPX manifest, then publish the repo root as the static site.
+[build]
+  command = "node generate-manifest.js"
+  publish = "."
