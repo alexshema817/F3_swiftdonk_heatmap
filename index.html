@@ -477,8 +477,9 @@
   #drawer-toggle {
     display: none;
     position: fixed;
-    bottom: 20px; left: 50%;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%;
     transform: translateX(-50%);
+    transition: bottom 0.35s cubic-bezier(0.32,0.72,0,1);
     z-index: 500;
     background: var(--accent);
     color: #fff;
@@ -532,6 +533,13 @@
     }
     aside.open { transform: translateY(0); }
 
+    /* When the drawer is open, lift the toggle above the sheet so the
+       "✕ CLOSE" pill no longer covers the Refresh / Fit buttons */
+    aside.open ~ #drawer-toggle {
+      bottom: calc(65vh + 14px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 2px 12px rgba(0,0,0,0.45);
+    }
+
     /* Drag handle */
     aside::before {
       content: '';
@@ -549,7 +557,7 @@
     /* Larger touch targets */
     .file-item { padding: 12px 16px; font-size: 0.7rem; }
     .file-dot { width: 9px; height: 9px; }
-    .controls { padding: 12px 16px; }
+    .controls { padding: 12px 16px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
     .btn { padding: 12px; font-size: 1rem; }
   }
 </style>
@@ -1074,6 +1082,15 @@ document.getElementById('map').addEventListener('click', () => {
   sidebar.classList.remove('open');
   drawerToggle.textContent = '☰ RUNS';
 });
+
+// Keep the map sized correctly after rotation / viewport changes (mobile)
+let resizeTimer;
+function refreshMapSize() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => map.invalidateSize(), 200);
+}
+window.addEventListener('resize', refreshMapSize);
+window.addEventListener('orientationchange', refreshMapSize);
 
 // ── Loading screen ─────────────────────────────────────────────────────────
 let routesReady = false;
