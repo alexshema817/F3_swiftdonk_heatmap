@@ -668,12 +668,11 @@
 
 <script>
 // ── Config ─────────────────────────────────────────────────────────────────
-// GPX files are served from the SAME origin as this page (deployed alongside
-// it in map_files/). We no longer hit the GitHub API at runtime — its 60/hr
-// unauthenticated, per-IP rate limit caused mobile (cellular / iCloud Private
-// Relay shared IPs) to get 403s and load no routes. manifest.json lists the files.
-const FILES_BASE = 'map_files';
-const MANIFEST   = `${FILES_BASE}/manifest.json`;
+// Routes are loaded from a SINGLE preprocessed, simplified file (routes.json),
+// generated from the GPX files at build time by build-routes.js. This replaces
+// fetching + XML-parsing ~70 large GPX files (~51 MB) with one small request.
+// Same origin, so no GitHub API and no rate limits.
+const ROUTES_URL = 'routes.json';
 
 // ── State ──────────────────────────────────────────────────────────────────
 const state = {
@@ -756,44 +755,6 @@ function freqColor(count, max) {
   const g = Math.round(102 - t * 102);
   const b = Math.round(255 - t * 255);
   return `rgb(${r},${g},${b})`;
-}
-
-// ── GPX Parser ─────────────────────────────────────────────────────────────
-function parseGPX(text, filename) {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
-  const coords = [];
-  doc.querySelectorAll('trkpt,rtept').forEach(pt => {
-    const lat = parseFloat(pt.getAttribute('lat'));
-    const lon = parseFloat(pt.getAttribute('lon'));
-    if (!isNaN(lat) && !isNaN(lon)) coords.push([lat, lon]);
-  });
-
-  // Try to get date from <time> element inside the track
-  let name = '';
-  let dateTs = 0; // unix timestamp for sorting
-  const timeEl = doc.querySelector('trkpt time, trk time, metadata time, time');
-  if (timeEl) {
-    const d = new Date(timeEl.textContent.trim());
-    if (!isNaN(d)) {
-      name = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      dateTs = d.getTime();
-    }
-  }
-  // Fallback: try to parse date from filename (e.g. 2024-03-15.gpx)
-  if (!name) {
-    const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
-    if (match) {
-      const d = new Date(match[1]);
-      if (!isNaN(d)) {
-        name = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        dateTs = d.getTime();
-      }
-    }
-  }
-  // Final fallback: just use filename
-  if (!name) name = filename.replace('.gpx','').replace(/_/g,' ');
-
-  return { name, coords, dateTs };
 }
 
 // ── Distance ───────────────────────────────────────────────────────────────
@@ -954,69 +915,53 @@ function setProgress(pct) {
   document.getElementById('load-bar').style.width = pct + '%';
 }
 
-// ── GitHub fetch ───────────────────────────────────────────────────────────
-async function fetchGPXList() {
-  setStatus('Loading file list...');
-  const res = await fetch(MANIFEST, { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`manifest.json ${res.status}: ${res.statusText}`);
-  const names = await res.json();
-  return names
-    .filter(n => typeof n === 'string' && n.toLowerCase().endsWith('.gpx'))
-    .map(name => ({ name }));
+// ── Load routes (single preprocessed JSON built by build-routes.js) ──────────
+function formatDate(d) {
+  // d is "YYYY-MM-DD"; anchor at noon so locale formatting can't shift the day
+  const dt = new Date(d + 'T12:00:00');
+  return isNaN(dt)
+    ? d
+    : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-async function fetchAndParse(file, index, total) {
-  setStatus(`Loading ${index + 1} / ${total} — ${file.name}`);
-  setProgress(((index + 1) / total) * 100);
-
-  // Same-origin path — no GitHub API/raw dependency, no rate limit
-  const url = `${FILES_BASE}/${encodeURIComponent(file.name)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch ${file.name}: ${res.status}`);
-  const text = await res.text();
-  return parseGPX(text, file.name);
-}
-
-async function loadAllFromGitHub() {
+async function loadRoutes() {
   try {
-    const files = await fetchGPXList();
+    setStatus('Loading routes...');
+    setProgress(30);
+    const res = await fetch(ROUTES_URL, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`routes.json ${res.status}: ${res.statusText}`);
+    const routes = await res.json();
+    setProgress(70);
 
-    if (files.length === 0) {
-      setStatus('No GPX files found in /gpx folder yet', true);
+    if (!routes.length) {
+      setStatus('No routes found yet', true);
       document.getElementById('empty-state').querySelector('.empty-text').textContent = 'No Files Yet';
-      document.getElementById('empty-state').querySelector('.empty-sub').textContent  = 'Add GPX files to the /Map Files folder in GitHub';
+      document.getElementById('empty-state').querySelector('.empty-sub').textContent  = 'Add GPX files to map_files/ and redeploy';
+      routesReady = true; dismissLoadingScreen();
       return;
     }
 
-    setStatus(`Found ${files.length} GPX file${files.length > 1 ? 's' : ''} — loading...`);
-
-    // Fetch all in parallel batches of 5 to avoid hammering
-    const BATCH = 10;
     let loaded = 0;
-    for (let i = 0; i < files.length; i += BATCH) {
-      const batch = files.slice(i, i + BATCH);
-      const results = await Promise.allSettled(
-        batch.map((f, bi) => fetchAndParse(f, i + bi, files.length))
-      );
-      results.forEach((r, bi) => {
-        if (r.status === 'fulfilled' && r.value.coords.length >= 2) {
-          const { name, coords, dateTs } = r.value;
-          const color = getColor(state.activities.length);
-          const dist  = totalDist(coords);
-          state.activities.push({ id: `${i+bi}`, name, color, coords, dist, visible: true, dateTs });
-          registerSegments(coords);
-          loaded++;
-        }
+    routes.forEach((rt, idx) => {
+      const coords = rt.c;
+      if (!coords || coords.length < 2) return;
+      state.activities.push({
+        id: String(idx),
+        name: formatDate(rt.d),
+        color: getColor(state.activities.length),
+        coords,
+        dist: totalDist(coords),
+        visible: true,
+        dateTs: Date.parse(rt.d + 'T12:00:00') || 0,
       });
-      // Update sidebar list progressively, defer expensive map render to end
-      renderFileList();
-      setStatus(`Loaded ${loaded} / ${files.length}...`);
-    }
+      registerSegments(coords);
+      loaded++;
+    });
 
     setProgress(100);
     document.getElementById('empty-state').style.display = 'none';
 
-    // Single render after all files are loaded
+    renderFileList();
     renderAll();
     fitAll();
     setStatus(`${loaded} activit${loaded !== 1 ? 'ies' : 'y'} loaded — ${state.segmentMap.size} road segments`, true);
@@ -1116,7 +1061,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
-loadAllFromGitHub();
+loadRoutes();
 </script>
 </body>
 </html>
